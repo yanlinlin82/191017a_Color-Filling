@@ -1,0 +1,81 @@
+---
+title: Color Filling
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+# Initialize Data
+
+```{r}
+m <- matrix(c(1,2,2,1,3,4,1,3,3,5,5,5),3)
+print(m)
+```
+
+```{r, fig.width=5, fig.height=3}
+cbind(expand.grid(row = 1:3, col = 1:4), val = as.vector(m)) %>%
+  ggplot(aes(col, desc(row))) +
+  geom_tile(aes(fill=as.factor(val))) +
+  geom_text(aes(label = val)) +
+  guides(fill = FALSE)
+```
+
+# Enumerate All Adjacent Pairs
+
+```{r}
+adjacent <- rbind(tibble(A = as.vector(m[-nrow(m),]),  # rows: 1 ~ (nrow-1)
+                         B = as.vector(m[-1,])),       # rows: 2 ~ nrow
+                  tibble(A = as.vector(m[,-ncol(m)]),  # cols: 1 ~ (ncol-1)
+                         B = as.vector(m[,-1])))       # cols: 2 ~ ncol
+adjacent <- adjacent %>%
+  filter(A != B) %>%
+  unique
+```
+
+# Check All Combinations
+
+```{r}
+all_comb <- function(n) {
+  if (n <= 1) {
+    list(tibble(val = 1, fill = 1))
+  } else {
+    l <- all_comb(n - 1)
+    lapply(1:n, function(x) {
+      lapply(l, function(d) rbind(d, tibble(val = n, fill = x)))
+    }) %>% do.call("c", .)
+  }
+}
+
+x <- unique(as.vector(m))
+comb <- all_comb(length(x))
+```
+
+```{r}
+results <- sapply(comb, function(d) {
+  adjacent %>%
+    left_join(d, by = c("A" = "val")) %>%
+    left_join(d, by = c("B" = "val")) %>%
+    with(all(fill.x != fill.y))
+})
+```
+
+Final results:
+
+```{r}
+print(sum(results))
+```
+
+# Show Results
+
+```{r, fig.width=5, fig.height=3}
+for (i in which(results)) {
+  g <- cbind(expand.grid(row = 1:3, col = 1:4), val = as.vector(m)) %>%
+    left_join(comb[[i]], by = "val") %>%
+    ggplot(aes(col, desc(row))) +
+    geom_tile(aes(fill=as.factor(fill))) +
+    geom_text(aes(label = fill)) +
+    guides(fill = FALSE)
+  print(g)
+}
+```
