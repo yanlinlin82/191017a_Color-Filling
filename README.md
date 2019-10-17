@@ -1,1 +1,3 @@
 # Color Filling
+
+![](problem.jpg)
